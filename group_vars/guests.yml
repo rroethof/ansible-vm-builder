@@ -1,0 +1,41 @@
+---
+guests:
+  - name: centos6
+    url: http://mirror.nl.leaseweb.net/centos/6/os/x86_64/
+    cpu: 1
+    mem: 512
+    nic: kvmwan
+    virt_type: kvm
+    virt_hypervisor: hvm
+    os:
+      type: linux
+      variant: rhel6
+    disk:
+      size: 5
+      path: /var/lib/libvirt/images
+  - name: debian
+    url: http://mirror.nl.leaseweb.net/debian/dists/stable/main/installer-amd64/
+    cpu: 1
+    mem: 512
+    nic: kvmwan
+    virt_type: kvm
+    virt_hypervisor: hvm
+    os:
+      type: linux
+      variant: debianwheezy
+    disk:
+      size: 5
+      path: /var/lib/libvirt/images
+  - name: ubuntu
+    url: http://mirror.nl.leaseweb.net/ubuntu/dists/trusty/main/installer-amd64/
+    cpu: 1
+    mem: 512
+    nic: kvmwan
+    virt_type: kvm
+    virt_hypervisor: hvm
+    os:
+      type: linux
+      variant: ubuntutrusty
+    disk:
+      size: 5
+      path: /var/lib/libvirt/images

@@ -1,0 +1,95 @@
+---
+- name: manage libvirt guests
+  hosts: cloud.familieroethof.nl
+  user: root
+  become: true
+  serial: 1
+
+  vars_files:
+    - ../group_vars/guests.yml
+
+  tasks:
+    - name: start libvirtd
+      service: name=libvirt-bin state=started enabled=yes
+      register: libvirtd
+
+    - name: wait for libvirtd to get up
+      pause: seconds=30
+      when: libvirtd.changed
+
+    - name: get list of vms
+      virt: command=list_vms
+      register: virt_vms
+
+    - name: ensure that the installers are on the vm host
+      copy: src=../files/virt-guests/{{item}} dest=/var/lib/libvirt/images/{{item}} owner=libvirt-qemu group=kvm mode=644
+      with_items:
+      - centos.ks
+      - debian-preseed.cfg
+      - ubuntu-preseed.cfg
+
+    - name: create Ubuntu vms
+      command: virt-install -n {{item.name}}
+               -r {{ item.mem }}
+               --vcpus {{ item.cpu }}
+               --location {{ item.url }}
+               --os-type {{ item.os.type }}
+               --os-variant {{ item.os.variant }}
+               --network network={{ item.nic }}
+               --graphics vnc
+               --{{item.virt_hypervisor}}
+               --virt-type {{ item.virt_type }}
+               --disk size={{item.disk.size}},path={{item.disk.path}}/{{item.name}}.img,sparse=false,format=qcow2
+               --noautoconsole
+               --location=/var/lib/libvirt/iso/{{item.os.variant}}.iso
+               --initrd-inject=/var/lib/libvirt/images/ubuntu-preseed.cfg 
+               --extra-args="file=file:/ubuntu-preseed.cfg vga=788 quiet" 
+      when: item.name not in virt_vms.list_vms and item.os.variant == "ubuntutrusty"
+      with_items: guests
+
+    - name: create Debian vms
+      command: virt-install -n {{item.name}}
+               -r {{ item.mem }}
+               --vcpus {{ item.cpu }}
+               --location {{ item.url }}
+               --os-type {{ item.os.type }}
+               --os-variant {{ item.os.variant }}
+               --network network={{ item.nic }}
+               --graphics vnc
+               --{{item.virt_hypervisor}}
+               --virt-type {{ item.virt_type }}
+               --disk size={{item.disk.size}},path={{item.disk.path}}/{{item.name}}.img,sparse=false,format=qcow2
+               --noautoconsole
+               --location=/var/lib/libvirt/iso/{{item.os.variant}}.iso
+               --initrd-inject=/var/lib/libvirt/images/debian-preseed.cfg 
+               --extra-args="file=file:/debian-preseed.cfg vga=788 quiet" 
+      when: item.name not in virt_vms.list_vms and item.os.variant == "debianwheezy"
+      with_items: guests
+
+    - name: create CentOS vms
+      command: virt-install -n {{item.name}}
+               -r {{ item.mem }}
+               --vcpus {{ item.cpu }}
+               --location {{ item.url }}
+               --os-type {{ item.os.type }}
+               --os-variant {{ item.os.variant }}
+               --network network={{ item.nic }}
+               --graphics vnc
+               --{{item.virt_hypervisor}}
+               --virt-type {{ item.virt_type }}
+               --disk size={{item.disk.size}},path={{item.disk.path}}/{{item.name}}.img,sparse=false,format=qcow2
+               --noautoconsole
+               --location=/var/lib/libvirt/iso/{{item.os.variant}}.iso
+               --initrd-inject=/var/lib/libvirt/images/centos.ks
+               --extra-args="ks=file:/centos.ks console=tty0 console=ttyS0,115200"
+      when: item.name not in virt_vms.list_vms and item.os.variant == "rhel7"
+      with_items: guests
+
+    - name: get guest info
+      virt: command=info
+      register: virt_info
+
+    - name: make sure all vms are running
+      virt: name={{item.name}} command=start
+      when: virt_info[item.name]['state'] != 'running'
+      with_items: guests
